@@ -1,8 +1,9 @@
-#真实视频链接
-#https://aweme.snssdk.com/aweme/v1/playwm/?video_id=
-
 import requests
-import re
+import re,os
+
+def get_file_extension(url):
+   filename, file_extension = os.path.splitext(url)
+   return file_extension.split("?")[0].split("&")[0].split("=")[0]
 
 def getID(text):
     pattern = r'/(\d+)'
@@ -25,22 +26,32 @@ def openPage(url,ar=True):
         print(f"请求发生异常: {e}")
         return None
 
-def getVideoUrl(url):
-    id = getID(openPage(url,False).text)
-    id = openPage(f"https://www.douyin.com/web/api/v2/aweme/iteminfo/?reflow_source=reflow_page&item_ids={id}&a_bogus=666666666").json()['item_list'][0]["video"]["play_addr"]["uri"]
-    print(id)
-    return f"https://aweme.snssdk.com/aweme/v1/play/?video_id={id}"
+def getObjUrl(url):
+    uuid = getID(openPage(url,False).text)
+    item = openPage(f"https://www.douyin.com/web/api/v2/aweme/iteminfo/?reflow_source=reflow_page&item_ids={uuid}&a_bogus=666666666").json()['item_list'][0]
+    groups = item["images"]
+    id = []
+    if len(groups)==0:
+        id = item["video"]["play_addr"]["uri"]
+        urls = [f"https://aweme.snssdk.com/aweme/v1/play/?video_id={id}"]
+    else:
+        for i in groups:
+           id.append(i["url_list"][3])
+        urls = id
+    return urls
     
-def download(url,name):
-    response = openPage(url)
-    with open(name,"wb") as f:
-        f.write(response.content)
+def download(urls,name):
+    
+    for url in urls:
+        i = urls.index(url)
+        response = openPage(url)
+        with open(f"{name}_{i+1}{get_file_extension(response.url)}","wb") as f:
+            f.write(response.content)
 
-def getVideo(url):
-    download(getVideoUrl(url),f"{url.rstrip('/').split('/')[-1]}.mp4")
+def getObj(url):
+    download(getObjUrl(url),f"{url.rstrip('/').split('/')[-1]}")
 
 if __name__ == "__main__":
     while True:
         Url = input("请输入抖音链接：")
-        getVideo(Url)
-    
+        getObj(Url)    
